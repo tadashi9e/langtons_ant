@@ -7,7 +7,6 @@
 #include <iostream>
 #include <fstream>
 #include <vector>
-#include <GL/glew.h>
 #define CL_HPP_ENABLE_EXCEPTIONS
 #include <CL/cl.hpp>
 #include <GL/freeglut.h>
@@ -71,6 +70,91 @@ static double ortho_bottom = -1.0;
 static clock_t wall_clock = 0;
 
 static GLuint rendered_texture;
+
+void report_cl_error(const cl::Error& err) {
+  const char* s = "-";
+  switch (err.err()) {
+#define CASE_CL_CODE(code)\
+    case code: s = #code; break
+    CASE_CL_CODE(CL_DEVICE_NOT_FOUND);
+    CASE_CL_CODE(CL_DEVICE_NOT_AVAILABLE);
+    CASE_CL_CODE(CL_COMPILER_NOT_AVAILABLE);
+    CASE_CL_CODE(CL_MEM_OBJECT_ALLOCATION_FAILURE);
+    CASE_CL_CODE(CL_OUT_OF_RESOURCES);
+    CASE_CL_CODE(CL_OUT_OF_HOST_MEMORY);
+    CASE_CL_CODE(CL_PROFILING_INFO_NOT_AVAILABLE);
+    CASE_CL_CODE(CL_MEM_COPY_OVERLAP);
+    CASE_CL_CODE(CL_IMAGE_FORMAT_MISMATCH);
+    CASE_CL_CODE(CL_IMAGE_FORMAT_NOT_SUPPORTED);
+    CASE_CL_CODE(CL_BUILD_PROGRAM_FAILURE);
+    CASE_CL_CODE(CL_MAP_FAILURE);
+#ifdef CL_VERSION_1_1
+    CASE_CL_CODE(CL_MISALIGNED_SUB_BUFFER_OFFSET);
+    CASE_CL_CODE(CL_EXEC_STATUS_ERROR_FOR_EVENTS_IN_WAIT_LIST);
+#endif
+#ifdef CL_VERSION_1_2
+    CASE_CL_CODE(CL_COMPILE_PROGRAM_FAILURE);
+    CASE_CL_CODE(CL_LINKER_NOT_AVAILABLE);
+    CASE_CL_CODE(CL_LINK_PROGRAM_FAILURE);
+    CASE_CL_CODE(CL_DEVICE_PARTITION_FAILED);
+    CASE_CL_CODE(CL_KERNEL_ARG_INFO_NOT_AVAILABLE);
+#endif
+    CASE_CL_CODE(CL_INVALID_VALUE);
+    CASE_CL_CODE(CL_INVALID_DEVICE_TYPE);
+    CASE_CL_CODE(CL_INVALID_PLATFORM);
+    CASE_CL_CODE(CL_INVALID_DEVICE);
+    CASE_CL_CODE(CL_INVALID_CONTEXT);
+    CASE_CL_CODE(CL_INVALID_QUEUE_PROPERTIES);
+    CASE_CL_CODE(CL_INVALID_COMMAND_QUEUE);
+    CASE_CL_CODE(CL_INVALID_HOST_PTR);
+    CASE_CL_CODE(CL_INVALID_MEM_OBJECT);
+    CASE_CL_CODE(CL_INVALID_IMAGE_FORMAT_DESCRIPTOR);
+    CASE_CL_CODE(CL_INVALID_IMAGE_SIZE);
+    CASE_CL_CODE(CL_INVALID_SAMPLER);
+    CASE_CL_CODE(CL_INVALID_BINARY);
+    CASE_CL_CODE(CL_INVALID_BUILD_OPTIONS);
+    CASE_CL_CODE(CL_INVALID_PROGRAM);
+    CASE_CL_CODE(CL_INVALID_PROGRAM_EXECUTABLE);
+    CASE_CL_CODE(CL_INVALID_KERNEL_NAME);
+    CASE_CL_CODE(CL_INVALID_KERNEL_DEFINITION);
+    CASE_CL_CODE(CL_INVALID_KERNEL);
+    CASE_CL_CODE(CL_INVALID_ARG_INDEX);
+    CASE_CL_CODE(CL_INVALID_ARG_VALUE);
+    CASE_CL_CODE(CL_INVALID_ARG_SIZE);
+    CASE_CL_CODE(CL_INVALID_KERNEL_ARGS);
+    CASE_CL_CODE(CL_INVALID_WORK_DIMENSION);
+    CASE_CL_CODE(CL_INVALID_WORK_GROUP_SIZE);
+    CASE_CL_CODE(CL_INVALID_WORK_ITEM_SIZE);
+    CASE_CL_CODE(CL_INVALID_GLOBAL_OFFSET);
+    CASE_CL_CODE(CL_INVALID_EVENT_WAIT_LIST);
+    CASE_CL_CODE(CL_INVALID_EVENT);
+    CASE_CL_CODE(CL_INVALID_OPERATION);
+    CASE_CL_CODE(CL_INVALID_GL_OBJECT);
+    CASE_CL_CODE(CL_INVALID_BUFFER_SIZE);
+    CASE_CL_CODE(CL_INVALID_MIP_LEVEL);
+    CASE_CL_CODE(CL_INVALID_GLOBAL_WORK_SIZE);
+#ifdef CL_VERSION_1_1
+    CASE_CL_CODE(CL_INVALID_PROPERTY);
+#endif
+#ifdef CL_VERSION_1_2
+    CASE_CL_CODE(CL_INVALID_IMAGE_DESCRIPTOR);
+    CASE_CL_CODE(CL_INVALID_COMPILER_OPTIONS);
+    CASE_CL_CODE(CL_INVALID_LINKER_OPTIONS);
+    CASE_CL_CODE(CL_INVALID_DEVICE_PARTITION_COUNT);
+#endif
+#ifdef CL_VERSION_2_0
+    CASE_CL_CODE(CL_INVALID_PIPE_SIZE);
+    CASE_CL_CODE(CL_INVALID_DEVICE_QUEUE);
+#endif
+#ifdef CL_VERSION_2_2
+    CASE_CL_CODE(CL_INVALID_SPEC_ID);
+    CASE_CL_CODE(CL_MAX_SIZE_RESTRICTION_EXCEEDED);
+#endif
+    CASE_CL_CODE(CL_INVALID_GL_SHAREGROUP_REFERENCE_KHR);
+  }
+  std::cerr << "caught exception: " << err.what() <<
+    ": " << s << "(" << err.err() << ")" << std::endl;
+}
 
 // ----------------------------------------------------------------------
 // gl functions
@@ -214,11 +298,11 @@ static void initGL(int argc, char *argv[]) {
   glBindTexture(GL_TEXTURE_2D, rendered_texture);
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST_MIPMAP_LINEAR);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-  glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8,
+  glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F,
                field_width, field_height,
-               0, GL_RGBA, GL_UNSIGNED_BYTE, 0);
+               0, GL_RGBA, GL_FLOAT, 0);
   glCheck_("glTexImage2D");
   glFinish();
 }
@@ -265,7 +349,7 @@ static void generationTimer_cb(int dummy) {
       const double fps = static_cast<double>(sample_rate)
         / ((now - wall_clock) / CLOCKS_PER_SEC);
       std::cout << "step[" << step << "],"
-        "fps[" << fps << "]" << std::endl;
+        "fps[" << fps << "]\r" << std::flush;
       wall_clock = now;
     }
     if (paused == 2) {
@@ -507,7 +591,7 @@ int main(int argc, char *argv[]) {
 
     startGL();
   } catch (const cl::Error& err) {
-    std::cerr << err.what() << std::endl;
+    report_cl_error(err);
   }
   return 0;
 }
