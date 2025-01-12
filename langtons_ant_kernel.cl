@@ -98,6 +98,21 @@ __kernel void la_forward(
 }
 
 /*
+  Clear field image (fill white)
+ */
+__kernel void la_clear_image(
+    __write_only image2d_t image,
+    int width,
+    int height) {
+  const int x = get_global_id(0);
+  const int y = get_global_id(1);
+  if (x >= width || y >= height) return;
+  const float r = 1.0, g = 1.0, b = 1.0;
+  const float4 pixel = (float4)(r, g, b, 1.0);
+  write_imagef(image, (int2)(x,y), pixel);
+}
+
+/*
   Draw field image
  */
 __kernel void la_draw_image(
@@ -109,14 +124,20 @@ __kernel void la_draw_image(
   const int y = get_global_id(1);
   if (x >= width || y >= height) return;
   const char c = get(field, x, y, width, height);
-  float r = ((c & BIT_BW) != 0) ? 0.0 : 1.0;
-  float g = r;
-  float b = r;
-  if ((c & BITS_NEWS) != 0) {
+  float r, g, b;
+  if ((c & BITS_NEWS) == 0) {
+    return;
+  }
+  if ((c & BIT_BW) != 0) {
     r = 1.0;
+    g = 0.8;
+    b = 0.8;
+  } else {
+    // black
+    r = 0.0;
     g = 0.0;
     b = 0.0;
   }
-  const float4 pixel = (float4)(r, g, b, 255);
+  const float4 pixel = (float4)(r, g, b, 1.0);
   write_imagef(image, (int2)(x,y), pixel);
 }

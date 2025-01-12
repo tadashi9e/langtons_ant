@@ -39,6 +39,7 @@ static cl::CommandQueue command_queue;
 static cl::Program program;
 static cl::Kernel la_kernel_rotate_and_flip;
 static cl::Kernel la_kernel_forward;
+static cl::Kernel la_kernel_clear_image;
 static cl::Kernel la_kernel_draw_image;
 static cl::Buffer dev_field_in;
 static cl::Buffer dev_field_out;
@@ -71,7 +72,7 @@ static clock_t wall_clock = 0;
 
 static GLuint rendered_texture;
 
-void report_cl_error(const cl::Error& err) {
+static void report_cl_error(const cl::Error& err) {
   const char* s = "-";
   switch (err.err()) {
 #define CASE_CL_CODE(code)\
@@ -312,6 +313,8 @@ static void displayTimer_cb(int dummy) {
   glutTimerFunc(refresh_mills, displayTimer_cb, 0);
 }
 
+static bool first = true;
+
 static void generationTimer_cb(int dummy) {
   if (paused == 1) {
     glutTimerFunc(gen_mills, generationTimer_cb, 0);
@@ -332,6 +335,15 @@ static void generationTimer_cb(int dummy) {
                                                    global_work_size[1]),
                                        cl::NDRange(local_work_size[0],
                                                    local_work_size[1]));
+    if (first) {
+      command_queue.enqueueNDRangeKernel(la_kernel_clear_image,
+                                         cl::NullRange,
+                                         cl::NDRange(global_work_size[0],
+                                                     global_work_size[1]),
+                                         cl::NDRange(local_work_size[0],
+                                                     local_work_size[1]));
+      first = false;
+    }
     command_queue.enqueueNDRangeKernel(la_kernel_draw_image,
                                        cl::NullRange,
                                        cl::NDRange(global_work_size[0],
@@ -578,6 +590,11 @@ int main(int argc, char *argv[]) {
     la_kernel_forward.setArg(1, dev_field_in);
     la_kernel_forward.setArg(2, sizeof(cl_int), &elements_size[0]);
     la_kernel_forward.setArg(3, sizeof(cl_int), &elements_size[1]);
+
+    la_kernel_clear_image = cl::Kernel(program, "la_clear_image");
+    la_kernel_clear_image.setArg(0, dev_image);
+    la_kernel_clear_image.setArg(1, sizeof(cl_int), &elements_size[0]);
+    la_kernel_clear_image.setArg(2, sizeof(cl_int), &elements_size[1]);
 
     la_kernel_draw_image = cl::Kernel(program, "la_draw_image");
     la_kernel_draw_image.setArg(0, dev_field_in);
