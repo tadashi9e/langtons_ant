@@ -18,9 +18,9 @@ static int sample_rate = 1000;
 // game variables
 // ----------------------------------------------------------------------
 static int paused = 0;
-static std::vector<char> field_image;
-static size_t field_width = 1024;
-static size_t field_height = 1024;
+static std::vector<cl_char> field_image;
+static cl_int field_width = 1024;
+static cl_int field_height = 1024;
 static int n_ants = 20;
 static size_t step = 0;
 
@@ -48,9 +48,9 @@ static cl::Memory dev_image;
 // ----------------------------------------------------------------------
 // work size info
 // ----------------------------------------------------------------------
-static std::vector<size_t> elements_size;
-static std::vector<size_t> global_work_size;
-static std::vector<size_t> local_work_size;
+static std::vector<cl_int> elements_size;
+static std::vector<cl_int> global_work_size;
+static std::vector<cl_int> local_work_size;
 
 // ----------------------------------------------------------------------
 // gl variables
@@ -405,7 +405,7 @@ enum rps_type {
   P = 0x04,
 };
 
-void la_init_random_field(std::vector<char>& field_init) {
+void la_init_random_field(std::vector<cl_char>& field_init) {
   unsigned seed = time(0);
   // #pragma omp parallel firstprivate(seed)
   {
@@ -475,15 +475,15 @@ int main(int argc, char *argv[]) {
       }
     }
     initGL(argc, argv);
-    elements_size = std::vector<size_t>({
+    elements_size = std::vector<cl_int>({
         field_width, field_height});  // cell slots
-    local_work_size = std::vector<size_t>({
+    local_work_size = std::vector<cl_int>({
         32, 32});
-    global_work_size = std::vector<size_t>({
-        static_cast<size_t>(ceil(
+    global_work_size = std::vector<cl_int>({
+        static_cast<cl_int>(ceil(
             static_cast<double>(elements_size[0])
             / local_work_size[0]) * local_work_size[0]),
-        static_cast<size_t>(ceil(
+        static_cast<cl_int>(ceil(
             static_cast<double>(elements_size[1])
             / local_work_size[1]) * local_work_size[1])});
     std::cout << "global_work_size[0]=" << global_work_size[0]
@@ -503,7 +503,7 @@ int main(int argc, char *argv[]) {
     /* end allocate host memory */
 
     /* init field_init */
-    std::vector<char> field_init;
+    std::vector<cl_char> field_init;
     field_init.resize(global_work_size[0] * global_work_size[1]);
     la_init_random_field(field_init);
     /* end init field_init */
