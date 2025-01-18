@@ -182,14 +182,14 @@ static void display_cb() {
   glEnable(GL_TEXTURE_2D);
   glBindTexture(GL_TEXTURE_2D, rendered_texture);
   glCheck_("glBindTexture");
-
-  glBegin(GL_QUADS);
+  glBegin(GL_TRIANGLES);
   glTexCoord2f(0.0f, 0.0f); glVertex3f(-1.0f, -1.0f, 0.0f);
   glTexCoord2f(1.0f, 0.0f); glVertex3f(1.0f,  -1.0f, 0.0f);
   glTexCoord2f(1.0f, 1.0f); glVertex3f(1.0f,   1.0f, 0.0f);
+  glTexCoord2f(1.0f, 1.0f); glVertex3f(1.0f,   1.0f, 0.0f);
   glTexCoord2f(0.0f, 1.0f); glVertex3f(-1.0f,  1.0f, 0.0f);
+  glTexCoord2f(0.0f, 0.0f); glVertex3f(-1.0f, -1.0f, 0.0f);
   glEnd();
-
   glutSwapBuffers();
 }
 
