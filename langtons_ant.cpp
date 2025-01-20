@@ -398,12 +398,6 @@ static std::string loadProgramSource(const char *filename) {
 // ----------------------------------------------------------------------
 // game functions
 // ----------------------------------------------------------------------
-// Rock-Paper-Scissors
-enum rps_type {
-  R = 0x01,
-  S = 0x02,
-  P = 0x04,
-};
 
 void la_init_random_field(std::vector<cl_char>& field_init) {
   unsigned seed = time(0);
