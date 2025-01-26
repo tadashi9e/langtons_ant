@@ -6,13 +6,12 @@
 #include <algorithm>
 #include <iostream>
 #include <fstream>
+#include <sstream>
 #include <vector>
 #define CL_HPP_ENABLE_EXCEPTIONS
 #include <CL/cl.hpp>
 #include <GL/freeglut.h>
 #include <GL/glx.h>
-
-static int sample_rate = 1000;
 
 // ----------------------------------------------------------------------
 // game variables
@@ -320,6 +319,8 @@ static void displayTimer_cb(int dummy) {
 
 static bool first = true;
 
+static int step_count = 0;
+
 static void generationTimer_cb(int dummy) {
   if (paused == 1) {
     glutTimerFunc(gen_mills, generationTimer_cb, 0);
@@ -360,13 +361,22 @@ static void generationTimer_cb(int dummy) {
 
     command_queue.enqueueReleaseGLObjects(&dev_image_vec);
     ++step;
+    ++step_count;
 
-    if (step % sample_rate == 0) {
-      const clock_t now = clock();
-      const double fps = static_cast<double>(sample_rate)
+    const clock_t now = clock();
+    if (now > wall_clock + CLOCKS_PER_SEC) {
+      const double fps = static_cast<double>(step_count)
         / ((now - wall_clock) / CLOCKS_PER_SEC);
-      std::cout << "step[" << step << "],"
-        "fps[" << fps << "]\r" << std::flush;
+      step_count = 0;
+      static std::string report;
+      std::stringstream ss;
+      ss << "step[" << step << "],fps[" << fps << "]";
+      std::string s = ss.str();
+      if (s.size() < report.size()) {
+        s += std::string(report.size() - s.size(), ' ');
+      }
+      report = s;
+      std::cout << report << "\r" << std::flush;
       wall_clock = now;
     }
     if (paused == 2) {
@@ -401,16 +411,12 @@ static std::string loadProgramSource(const char *filename) {
 
 void la_init_random_field(std::vector<cl_char>& field_init) {
   unsigned seed = time(0);
-  // #pragma omp parallel firstprivate(seed)
-  {
-    srand(seed);
-    // #pragma omp for collapse(2)
-    for (int i = 0; i < n_ants; ++i) {
-      int y = rand_r(&seed) % field_height;
-      int x = rand_r(&seed) % field_width;
-      int d = (1 << (rand_r(&seed) % 4));
-      field_init[y * field_width + x] = d;
-    }
+  srand(seed);
+  for (int i = 0; i < n_ants; ++i) {
+    int y = rand_r(&seed) % field_height;
+    int x = rand_r(&seed) % field_width;
+    int d = (1 << (rand_r(&seed) % 4));
+    field_init[y * field_width + x] = d;
   }
 }
 
