@@ -587,25 +587,17 @@ int main(int argc, char *argv[]) {
     la_kernel_rotate_and_flip = cl::Kernel(program, "la_rotate_and_flip");
     la_kernel_rotate_and_flip.setArg(0, dev_field_in);
     la_kernel_rotate_and_flip.setArg(1, dev_field_out);
-    la_kernel_rotate_and_flip.setArg(2, sizeof(cl_int), &elements_size[0]);
-    la_kernel_rotate_and_flip.setArg(3, sizeof(cl_int), &elements_size[1]);
 
     la_kernel_forward = cl::Kernel(program, "la_forward");
     la_kernel_forward.setArg(0, dev_field_out);
     la_kernel_forward.setArg(1, dev_field_in);
-    la_kernel_forward.setArg(2, sizeof(cl_int), &elements_size[0]);
-    la_kernel_forward.setArg(3, sizeof(cl_int), &elements_size[1]);
 
     la_kernel_clear_image = cl::Kernel(program, "la_clear_image");
     la_kernel_clear_image.setArg(0, dev_image);
-    la_kernel_clear_image.setArg(1, sizeof(cl_int), &elements_size[0]);
-    la_kernel_clear_image.setArg(2, sizeof(cl_int), &elements_size[1]);
 
     la_kernel_draw_image = cl::Kernel(program, "la_draw_image");
     la_kernel_draw_image.setArg(0, dev_field_in);
     la_kernel_draw_image.setArg(1, dev_image);
-    la_kernel_draw_image.setArg(2, sizeof(cl_int), &elements_size[0]);
-    la_kernel_draw_image.setArg(3, sizeof(cl_int), &elements_size[1]);
     command_queue.enqueueWriteBuffer(
         dev_field_in, CL_FALSE, 0,
         sizeof(cl_char) * global_work_size[0] * global_work_size[1],

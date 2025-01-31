@@ -33,12 +33,11 @@ char get(
 */
 __kernel void la_rotate_and_flip(
     __global unsigned char *src,
-    __global unsigned char *dst,
-    int width,
-    int height) {
+    __global unsigned char *dst) {
+  const int width = get_global_size(0);
+  const int height = get_global_size(0);
   const int x = get_global_id(0);
   const int y = get_global_id(1);
-  if (x >= width || y >= height) return;
   const char c = get(src, x, y, width, height);
   char c_news = 0;
   char c_bw = c & BIT_BW;
@@ -69,12 +68,11 @@ __kernel void la_rotate_and_flip(
 */
 __kernel void la_forward(
     __global unsigned char *src,
-    __global unsigned char *dst,
-    int width,
-    int height) {
+    __global unsigned char *dst) {
+  const int width = get_global_size(0);
+  const int height = get_global_size(0);
   const int x = get_global_id(0);
   const int y = get_global_id(1);
-  if (x >= width || y >= height) return;
   const char c_n = get(src, x, y - 1, width, height);
   const char c_e = get(src, x + 1, y, width, height);
   const char c_s = get(src, x, y + 1, width, height);
@@ -101,12 +99,11 @@ __kernel void la_forward(
   Clear field image (fill white)
  */
 __kernel void la_clear_image(
-    __write_only image2d_t image,
-    int width,
-    int height) {
+    __write_only image2d_t image) {
+  const int width = get_global_size(0);
+  const int height = get_global_size(0);
   const int x = get_global_id(0);
   const int y = get_global_id(1);
-  if (x >= width || y >= height) return;
   const float r = 1.0, g = 1.0, b = 1.0;
   const float4 pixel = (float4)(r, g, b, 1.0);
   write_imagef(image, (int2)(x,y), pixel);
@@ -117,12 +114,11 @@ __kernel void la_clear_image(
  */
 __kernel void la_draw_image(
     __global unsigned char *field,
-    __write_only image2d_t image,
-    int width,
-    int height) {
+    __write_only image2d_t image) {
+  const int width = get_global_size(0);
+  const int height = get_global_size(0);
   const int x = get_global_id(0);
   const int y = get_global_id(1);
-  if (x >= width || y >= height) return;
   const char c = get(field, x, y, width, height);
   float r, g, b;
   if ((c & BITS_NEWS) == 0) {

@@ -5,7 +5,7 @@ CXX_FLAGS=-Wall -D__CL_ENABLE_EXCEPTIONS
 all: langtons_ant
 
 langtons_ant: langtons_ant.cpp
-	g++ $(CXX_FLAGS) -I$(CUDA_HEADER_DIR) langtons_ant.cpp -o langtons_ant -g -lOpenCL -lglut -lGLEW -lGLU -lGL -fopenmp
+	g++ $(CXX_FLAGS) -I$(CUDA_HEADER_DIR) langtons_ant.cpp -o langtons_ant -g -lOpenCL -lglut -lGLEW -lGLU -lGL -DCL_HPP_TARGET_OPENCL_VERSION=300
 
 clean:
 	rm -rf langtons_ant
