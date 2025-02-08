@@ -18,12 +18,13 @@ Langton's Ant is a two-dimensional Turing machine with a very simple set of rule
 Langton's Ant on OpenCL.
 
 ```
-Usage: langtons_ant [-w width] [-h height] [-i interval_millis] [-P]
- -w : Field width.
- -h : Field height.
- -n : Number of ants.
- -i : Step interval in milli seconds.
- -P : Pause at start. Will be released by 'p' key.
+Usage: langtons_ant [-d N] [-w width] [-h height] [-i interval_millis] [-P]
+ -d, --device    : Select compute device.
+ -w, --width     : Field width.
+ -h, --height    : Field height.
+ -n, --nants     : Number of ants.
+ -i, --interval  : Step interval in milli seconds.
+ -P, --pause     : Pause at start. Will be released by 'p' key.
 ```
 
 ### Requirements

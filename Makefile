@@ -1,11 +1,10 @@
-#CUDA_HEADER_DIR=/usr/local/cuda-10.2/include
-CUDA_HEADER_DIR=/usr/local/cuda-12.5/include
-CXX_FLAGS=-Wall -D__CL_ENABLE_EXCEPTIONS
+CXXFLAGS=-g -Wall `pkg-config --cflags OpenCL glut glu gl`
+LDFLAGS=`pkg-config --libs OpenCL glut glu gl`
 
 all: langtons_ant
 
 langtons_ant: langtons_ant.cpp
-	g++ $(CXX_FLAGS) -I$(CUDA_HEADER_DIR) langtons_ant.cpp -o langtons_ant -g -lOpenCL -lglut -lGLEW -lGLU -lGL -DCL_HPP_TARGET_OPENCL_VERSION=300
+	g++ $(CXXFLAGS) langtons_ant.cpp -o langtons_ant $(LDFLAGS)
 
 clean:
 	rm -rf langtons_ant

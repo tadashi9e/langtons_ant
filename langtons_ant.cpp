@@ -1,3 +1,4 @@
+#include <getopt.h>
 #include <string.h>
 #include <math.h>
 #include <time.h>
@@ -8,8 +9,9 @@
 #include <fstream>
 #include <sstream>
 #include <vector>
+#define CL_HPP_TARGET_OPENCL_VERSION 220
 #define CL_HPP_ENABLE_EXCEPTIONS
-#include <CL/cl.hpp>
+#include <CL/opencl.hpp>
 #include <GL/freeglut.h>
 #include <GL/glx.h>
 
@@ -357,7 +359,8 @@ static void generationTimer_cb(int dummy) {
                                        cl::NDRange(local_work_size[0],
                                                    local_work_size[1]));
 
-    command_queue.finish();
+    // command_queue.finish();
+    command_queue.flush();
 
     command_queue.enqueueReleaseGLObjects(&dev_image_vec);
     ++step;
@@ -427,14 +430,27 @@ inline void rtrim(std::string &s) {
 }
 
 int main(int argc, char *argv[]) {
-  cl_int err;
   try {
+    size_t device_index = 0;
     for (;;) {
-      int opt = getopt(argc, argv, "w:h:n:i:P");
+      int option_index = 0;
+      static struct option long_options[] = {
+        {"device", required_argument, 0, 'd'},
+        {"width", required_argument, 0, 'w'},
+        {"height", required_argument, 0, 'h'},
+        {"nants", required_argument, 0, 'n'},
+        {"interval", required_argument, 0, 'i'},
+        {"pause", no_argument, 0, 'P'},
+        {0, 0, 0}};
+      int opt = getopt_long(argc, argv, "d:w:h:n:i:P",
+                            long_options, &option_index);
       if (opt == -1) {
         break;
       }
       switch (opt) {
+      case 'd':
+        device_index = atoi(optarg);
+        break;
       case 'w':
         {
           const int w = atoi(optarg);
@@ -450,9 +466,8 @@ int main(int argc, char *argv[]) {
         }
         break;
       case 'n':
-        {
-          n_ants = atoi(optarg);
-        }
+        n_ants = atoi(optarg);
+        break;
       case 'i':
         gen_mills = atoi(optarg);
         break;
@@ -461,16 +476,17 @@ int main(int argc, char *argv[]) {
         break;
       default:
         std::cerr << "Usage: " << argv[0] <<
+          " [-d N]"
           " [-w width]"
           " [-h height]"
           " [-i interval_millis]"
           " [-P]" << std::endl;
-        std::cerr << " -w : Field width." << std::endl;
-        std::cerr << " -h : Field height." << std::endl;
-        std::cerr << " -n : Number of ants." << std::endl;
-        std::cerr << " -i : Step interval in milli seconds." << std::endl;
-        std::cerr << " -P : Pause at start. Will be released by 'p' key."
-                  << std::endl;
+        std::cerr << " -d, --device    : Select compute device." << std::endl;
+        std::cerr << " -w, --width     : Field width." << std::endl;
+        std::cerr << " -h, --height    : Field height." << std::endl;
+        std::cerr << " -n, --nants     : Number of ants." << std::endl;
+        std::cerr << " -i, --interval  : Step interval in milli seconds." << std::endl;
+        std::cerr << " -P, --pause     : Pause at start. Will be released by 'p' key." << std::endl;
         exit(1);
       }
     }
@@ -509,27 +525,37 @@ int main(int argc, char *argv[]) {
     /* end init field_init */
 
     std::vector<cl::Platform> platforms;
+    bool device_found = false;
+    size_t dev_index = 0;
     cl::Platform::get(&platforms);
     for (cl::Platform& plat : platforms) {
+      const std::string platvendor = plat.getInfo<CL_PLATFORM_VENDOR>();
+      const std::string platname = plat.getInfo<CL_PLATFORM_NAME>();
+      const std::string platver = plat.getInfo<CL_PLATFORM_VERSION>();
+      std::cout << "platform: vendor[" << platvendor << "]"
+        ",name[" << platname << "]"
+        ",version[" << platver << "]" << std::endl;
       std::vector<cl::Device> devices;
       plat.getDevices(CL_DEVICE_TYPE_GPU, &devices);
-      if (!devices.empty()) {
-        platform = plat;
-        device = devices.front();
-        const std::string platvendor = plat.getInfo<CL_PLATFORM_VENDOR>();
-        const std::string platname = plat.getInfo<CL_PLATFORM_NAME>();
-        const std::string platver = plat.getInfo<CL_PLATFORM_VERSION>();
-        std::cout << "platform: vendor[" << platvendor << "]"
-          ",name[" << platname << "]"
-          ",version[" << platver << "]" << std::endl;
-        const std::string devvendor = device.getInfo<CL_DEVICE_VENDOR>();
-        const std::string devname = device.getInfo<CL_DEVICE_NAME>();
-        const std::string devver = device.getInfo<CL_DEVICE_VERSION>();
-        std::cout << "device: vendor[" << devvendor << "]"
+      for (cl::Device& dev : devices) {
+        const std::string devvendor = dev.getInfo<CL_DEVICE_VENDOR>();
+        const std::string devname = dev.getInfo<CL_DEVICE_NAME>();
+        const std::string devver = dev.getInfo<CL_DEVICE_VERSION>();
+        std::cout << ((dev_index == device_index) ? '*' : ' ') <<
+          "device[" << dev_index << "]: vendor[" << devvendor << "]"
           ",name[" << devname << "]"
           ",version[" << devver << "]" << std::endl;
-        break;
+        if (dev_index == device_index) {
+          platform = plat;
+          device = dev;
+          device_found = true;
+        }
+        ++dev_index;
       }
+    }
+    if (!device_found) {
+      std::cerr << "device[" << device_index << "] not found" << std::endl;
+      exit(1);
     }
     const cl_platform_id platform_id = device.getInfo<CL_DEVICE_PLATFORM>()();
     cl_context_properties properties[7];
@@ -556,9 +582,9 @@ int main(int argc, char *argv[]) {
     command_queue = cl::CommandQueue(context, device, 0);
 
     /* create buffers */
-    cl::ImageGL image(context, CL_MEM_WRITE_ONLY, GL_TEXTURE_2D,
-                      0, rendered_texture, &err);
-    dev_image = image();
+    dev_image = cl::ImageGL(
+        context, CL_MEM_WRITE_ONLY, GL_TEXTURE_2D,
+        0, rendered_texture);
     dev_field_in = cl::Buffer(
         context, CL_MEM_READ_WRITE,
         sizeof(cl_char) * global_work_size[0] * global_work_size[1]);
